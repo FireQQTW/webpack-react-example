@@ -1,139 +1,196 @@
-var gulp      = require('gulp'),
-    scss      = require('gulp-ruby-sass'),
-    clean     = require('gulp-clean'),
-    concat    = require('gulp-concat'),
-    uglify    = require('gulp-uglify'),
-    jshint    = require('gulp-jshint'),
-    debug     = require('gulp-debug'),
-    stylish   = require('jshint-stylish'),
-    jade      = require('gulp-jade'),
-    bowerSrc  = require('gulp-bower-src'),
-    gulpFilter = require('gulp-filter'),
-    rename     = require('gulp-rename'),
-    watchify   = require('watchify'),
-    browserify = require('browserify'),
-    gutil      = require('gulp-util'),
-    source     = require('vinyl-source-stream'),
-    livereload = require('gulp-livereload');
+'use strict';
 
-var path = {
-    stylesheetsPath: './app/assets/stylesheets/*.scss',
-    jsPath: './app/assets/javascript/**/*.js',
-    jadePath: './app/**/*.jade'
+var gulp       = require('gulp'),
+    stylish    = require('jshint-stylish'),
+    browserify = require('browserify'),
+    mainBowerFiles = require('main-bower-files'),
+    source      = require('vinyl-source-stream');
+
+var gulpLoadOptions = {
+      'rename': {
+        'gulp-ruby-sass': 'scss',
+        'gulp-filter': 'gulpFilter',
+      }
+    };
+
+var SETTINGS = {
+  src: {
+    app:       'app/',
+    layout:    'app/layout/',
+    component: 'app/component/',
+    css:       'app/assets/stylesheets/',
+    js:        'app/assets/javascript/',
+    vendor:    'app/assets/javascript/vendor',
+    lib:       'app/assets/lib/'
+  },
+  build: {
+    dist:  'dist/',
+    lib:   'dist/assets/lib/',
+    css:   'dist/assets/css/',
+    js:    'dist/assets/javascript/',
+    fonts: 'dist/assets/fonts/'
+  }
 };
 
-// jade to bower-src task
-gulp.task('bower-src', ['clean'], function () {
-    console.log("=============== bower-src ===============");
-    var jsFilter = gulpFilter(['**/*.js', '!**/*.min.js']),
-        cssFilter = gulpFilter(['**/*.css', '!**/*.min.css']);
-    
-    gulp.src('./app/assets/lib/**/*')
-    .pipe(gulp.dest('./dist/assets/lib'));
+var $ = require('gulp-load-plugins')(gulpLoadOptions);
 
-    bowerSrc()
-        .pipe(jsFilter)
-        .pipe(uglify())
-        .pipe(concat('pluginAll.min.js'))
-        .pipe(jsFilter.restore())
-        .pipe(gulp.dest('./dist/assets/lib'));
-    bowerSrc()
-        .pipe(cssFilter)
-        .pipe(concat('pluginAll.min.css'))
-        .pipe(cssFilter.restore())
-        .pipe(gulp.dest('./dist/assets/lib'));
+/*============================================================
+=                          bower-copy                   =
+============================================================*/
+
+gulp.task('bower-copy', ['bower-copy:mainFile', 'bower-copy:css', 'bower-copy:js', 'bower-copy:fonts']);
+
+gulp.task('bower-copy:mainFile', function() {
+  console.log("-------------------------------------------------- bower-copy:mainFile");
+  gulp.src(mainBowerFiles())
+      .pipe(gulp.dest(SETTINGS.src.lib));
 });
 
-// jade to HTML task
-gulp.task('jade', ['clean'], function() {
-  console.log("=============== 編譯jade ===============");
+gulp.task('bower-copy:css', function() {
+  console.log("-------------------------------------------------- bower-copy:css");
+  gulp.src(SETTINGS.src.lib + '**/*.css')
+      .pipe(gulp.dest(SETTINGS.build.lib));
+});
+
+gulp.task('bower-copy:js', function() {
+  console.log("-------------------------------------------------- bower-copy:js");
+  gulp.src(SETTINGS.src.lib + '**/*.js')
+      .pipe(gulp.dest(SETTINGS.build.lib));
+});
+gulp.task('bower-copy:fonts', function() {
+  console.log("-------------------------------------------------- bower-copy:fonts");
+  gulp.src(SETTINGS.src.lib + '**/*.{otf,eot,svg,ttf,woff}')
+      .pipe(gulp.dest(SETTINGS.build.fonts));
+});
+
+
+/*============================================================
+=                          compile language                   =
+============================================================*/
+
+gulp.task('compile', ['compile:jade', 'compile:scss', 'compile:browserify', 'compile:pluginJS', 'compile:pluginCSS']);
+
+gulp.task('compile:jade', function() {
+  console.log("-------------------------------------------------- 編譯jade");
   var YOUR_LOCALS = {};
-  gulp.src(['./app/**/*.jade', '!./app/layout/**/*.jade', '!./app/component/**/*.jade'])
-  .pipe(jade({
+  gulp.src([ SETTINGS.src.app + '**/*.jade', '!' + SETTINGS.src.layout + '**/*.jade', '!' + SETTINGS.src.component + '**/*.jade'])
+  .pipe($.jade({
     pretty: true
   }))
-  .pipe(gulp.dest('./dist/'));
+  .pipe(gulp.dest(SETTINGS.build.dist))
+  .pipe($.livereload());
 });
 
-// scss task
-gulp.task('scss', ['clean'], function(){
-    console.log("=============== 編譯scss ===============");
-    gulp.src('./app/assets/stylesheets/styles.scss')
-    .pipe(scss({
-      sourcemap: true,
-      sourcemapPath: '../scss',
-      style: 'compressed',
-      debugInfo: true,
-      compass: true
-    }))
-    .on('error', function (err) { console.log(err.message); })
-    .pipe(gulp.dest('./dist/assets/css'))
-    .pipe(livereload());
-});
-
-
-// jshint task
-gulp.task('jshint', ['clean'], function() {
-  console.log("=============== 檢查jshint ===============");
-  gulp.src(path.jsPath)
-  .pipe(jshint())
-  .pipe(jshint.reporter(stylish));
+gulp.task('compile:scss', function(){
+  console.log("-------------------------------------------------- 編譯scss");
+  gulp.src(SETTINGS.src.css + 'styles.scss')
+  .pipe($.scss({
+    sourcemap: true,
+    sourcemapPath: '/',
+    style: 'compressed',
+    debugInfo: false,
+    compass: true
+  }))
+  .on('error', function (err) { console.log(err.message); })
+  .pipe(gulp.dest(SETTINGS.build.css))
+  .pipe($.livereload());
 });
 
 
-// include JS task
-gulp.task('concatJS:pro', ['clean'], function(){
-  console.log("=============== 合併、壓縮 js ===============");
-  gulp.src('./app/assets/javascript/**/*.js')
-  .pipe(debug())
-  .pipe(uglify({
+gulp.task('compile:browserify', ['jshint'], function() {
+  console.log("-------------------------------------------------- browserify run");
+  var b = browserify();
+  b.add('./' + SETTINGS.src.js + 'default.js');
+  b.bundle()
+  .on('error', $.util.log.bind($.util, 'Browserify Error'))
+  .pipe(source('all.js'))
+  .pipe(gulp.dest(SETTINGS.build.js))
+  .pipe($.livereload());
+});
+
+gulp.task('compile:pluginJS', function(){
+  console.log("-------------------------------------------------- plugin js");
+  gulp.src(SETTINGS.build.lib + '*.js')
+  .pipe($.uglify({
     mangle: false
   }))
-  .pipe(concat('all.js'))
-  .pipe(gulp.dest('./dist/assets/javascript'));
+  .pipe($.concat('pluginAll.min.js'))
+  .pipe(gulp.dest(SETTINGS.src.vendor));
 });
 
+gulp.task('compile:pluginCSS', function(){
+  console.log("-------------------------------------------------- plugin CSS");
+  gulp.src(SETTINGS.build.lib + '*.css')
+  .pipe($.minifyCss({
+    debug: true
+  }))
+  .pipe($.concat('pluginAll.min.css'))
+  .pipe(gulp.dest(SETTINGS.build.css));
+});
 
-// browserify task
-var bundler = watchify(browserify('./app/assets/javascript/default.js', watchify.args));
-bundler.transform('brfs');
+/*============================================================
+=                          jshint                   =
+============================================================*/
 
-gulp.task('browserify:compile', ['clean'], bundleBrowserify);
-bundler.on('update', bundleBrowserify);
+gulp.task('jshint', function() {
+  console.log("-------------------------------------------------- 檢查jshint");
+  gulp.src(SETTINGS.src.js)
+  .pipe($.jshint())
+  .pipe($.jshint.reporter(stylish));
+});
 
-function bundleBrowserify() {
-  console.log("=============== browserify run ===============");
-  bundler.bundle()
-  .on('error', gutil.log.bind(gutil, 'Browserify Error'))
-  .pipe(source('all.js'))
-  .pipe(gulp.dest('./dist/assets/javascript'));
-}
+/*============================================================
+=                          watch                   =
+============================================================*/
 
-// watch task
 gulp.task('watch', function() {
-  livereload.listen();
-  gulp.watch(path.jadePath, ['default']);
-  gulp.watch(path.stylesheetsPath, ['default']);
-  gulp.watch(path.jsPath, ['default']);
+  $.livereload.listen();
+  gulp.watch(SETTINGS.src.app + '**/*.jade', ['clean:html', 'compile:jade']);
+  gulp.watch(SETTINGS.src.css + '*.scss', ['clean:css', 'compile:scss', 'compile:pluginCSS']);
+  gulp.watch([SETTINGS.src.js + '**/*.js', '!' + SETTINGS.src.vendor + '**/*.js'], ['clean:js', 'compile:browserify', 'compile:pluginJS']);
 });
 
 
-// clean task
-gulp.task('clean', function(cb) {
-  console.log("=============== 清除編譯編譯完的檔案!!! ===============");
-  return gulp.src('./dist', {read: false})
-  .pipe(clean());
+/*============================================================
+=                          clean                   =
+============================================================*/
+
+gulp.task('clean:all', function(cb) {
+  console.log("-------------------------------------------------- 清除dist全部");
+  return gulp.src(SETTINGS.build.dist, {read: false})
+  .pipe($.clean());
 });
 
+gulp.task('clean:html', function(cb) {
+  console.log("-------------------------------------------------- 清除html!!!");
+  return gulp.src(SETTINGS.build.dist + '**/*.html', {read: false})
+  .pipe($.clean());
+});
 
-// default task
-gulp.task('default', 
-  ['clean',
-   'scss',
-   'bower-src',
-   'watch',
-   // 'jshint',
-   'jade',
-   'browserify:compile'
-   // 'concatJS:pro',
-   ]);
+gulp.task('clean:css', function(cb) {
+  console.log("-------------------------------------------------- 清除css!!!");
+  return gulp.src(SETTINGS.build.css, {read: false})
+  .pipe($.clean());
+});
+
+gulp.task('clean:js', function(cb) {
+  console.log("-------------------------------------------------- 清除js!!!");
+  return gulp.src(SETTINGS.build.js, {read: false})
+  .pipe($.clean());
+});
+
+/*============================================================
+=                          build                   =
+============================================================*/
+
+gulp.task('build', ['bower-copy', 'compile', 'watch'], function() {
+  console.log('-------------------------------------------------- BUILD - Development Mode');
+});
+
+/*============================================================
+=                          default                   =
+============================================================*/
+
+gulp.task('default', ['build']);
+
+gulp.task('prod', ['build:prod']);

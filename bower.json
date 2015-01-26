@@ -22,15 +22,8 @@
     "bootstrap": "~3.3.1"
   },
   "overrides": {
-    "jquery": {
-      "ignore": [
-        "src/**"
-      ]
-    },
-    "angular": {
-      "ignore": [
-        "index.js"
-      ]
+    "bootstrap": {
+      "dependencies": []
     }
   }
 }

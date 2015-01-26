@@ -1,15 +1,11 @@
 // app.js
+'use strict';
+
+window.$ = window.jQuery = require('jquery');
 
 var angular = require('angular'),
-    bootstrap = require('bootstrap');
+    pluginAll = require('./vendor/pluginAll.min.js');
 
-(function () {
-    'use strict';
+var go = require('./go'),
+    foo = require('./foo');
 
-    var foo = require('./foo.js');
-    
-}).call(this);
-
-define("sago", [], function(){
-  return console.log("dsfsafdasf");
-});

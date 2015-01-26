@@ -3,11 +3,13 @@
 doctype html
 html(lang="en")
   head
-    title ffffff
-    link(rel='stylesheet', href='/dist/assets/lib/pluginAll.min.css')
+    title 測試網頁
+    <!-- build:css css/combined.css -->
+    link(rel='stylesheet', href='/dist/assets/css/pluginAll.min.css')
     link(rel='stylesheet', href='/dist/assets/css/styles.css')
-    //- script(src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.15/require.js")
-    script(src="/dist/assets/lib/pluginAll.min.js")
+    <!-- endbuild -->
+    <!-- build:js css/combined.js -->
     script(src="/dist/assets/javascript/all.js")
+    <!-- endbuild -->
   body(ng-app="myApp")
     block content
