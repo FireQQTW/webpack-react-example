@@ -2,6 +2,7 @@
 
 var gulp       = require('gulp'),
     stylish    = require('jshint-stylish'),
+    watchify   = require('watchify'),
     browserify = require('browserify'),
     mainBowerFiles = require('main-bower-files'),
     source      = require('vinyl-source-stream');
@@ -78,7 +79,7 @@ gulp.task('compile:jade', function() {
     pretty: true
   }))
   .pipe(gulp.dest(SETTINGS.build.dist))
-  .pipe($.livereload());
+  .pipe($.connect.reload());
 });
 
 gulp.task('compile:scss', function(){
@@ -93,20 +94,29 @@ gulp.task('compile:scss', function(){
   }))
   .on('error', function (err) { console.log(err.message); })
   .pipe(gulp.dest(SETTINGS.build.css))
-  .pipe($.livereload());
+  .pipe($.connect.reload());
 });
 
+var bundler = watchify(browserify('./' + SETTINGS.src.js + 'default.js', watchify.args));
+// add any other browserify options or transforms here
+bundler.transform('brfs');
 
-gulp.task('compile:browserify', ['jshint'], function() {
+gulp.task('compile:browserify', ['jshint'], bundle); // so you can run `gulp js` to build the file
+bundler.on('update', bundle); // on any dep update, runs the bundler
+bundler.on('log', function(msg) {
+  console.log(msg);
+});
+
+function bundle() {
   console.log("-------------------------------------------------- browserify run");
-  var b = browserify();
-  b.add('./' + SETTINGS.src.js + 'default.js');
-  b.bundle()
-  .on('error', $.util.log.bind($.util, 'Browserify Error'))
-  .pipe(source('all.js'))
-  .pipe(gulp.dest(SETTINGS.build.js))
-  .pipe($.livereload());
-});
+  return bundler.bundle()
+    // log errors if they happen
+    .on('error', $.util.log.bind($.util, 'Browserify Error'))
+    .pipe(source('all.js'))
+    .pipe(gulp.dest(SETTINGS.build.js))
+    .pipe($.connect.reload());
+}
+
 
 gulp.task('compile:pluginJS', function(){
   console.log("-------------------------------------------------- plugin js");
@@ -144,10 +154,10 @@ gulp.task('jshint', function() {
 ============================================================*/
 
 gulp.task('watch', function() {
-  $.livereload.listen();
+  // $.livereload.listen();
   gulp.watch(SETTINGS.src.app + '**/*.jade', ['clean:html', 'compile:jade']);
-  gulp.watch(SETTINGS.src.css + '*.scss', ['clean:css', 'compile:scss', 'compile:pluginCSS']);
-  gulp.watch([SETTINGS.src.js + '**/*.js', '!' + SETTINGS.src.vendor + '**/*.js'], ['clean:js', 'compile:browserify', 'compile:pluginJS']);
+  gulp.watch(SETTINGS.src.css + '**/*.scss', ['clean:css', 'compile:scss', 'compile:pluginCSS']);
+  // gulp.watch([SETTINGS.src.js + '**/*.js', '!' + SETTINGS.src.vendor + '**/*.js'], ['clean:js', 'compile:browserify', 'compile:pluginJS']);
 });
 
 
@@ -180,10 +190,22 @@ gulp.task('clean:js', function(cb) {
 });
 
 /*============================================================
+=                open server & livereload               =
+============================================================*/
+
+gulp.task('connectDist', function () {
+  $.connect.server({
+    root: 'dist',
+    port: 8001,
+    livereload: true
+  });
+});
+
+/*============================================================
 =                          build                   =
 ============================================================*/
 
-gulp.task('build', ['bower-copy', 'compile', 'watch'], function() {
+gulp.task('build', ['connectDist', 'bower-copy', 'compile', 'watch'], function() {
   console.log('-------------------------------------------------- BUILD - Development Mode');
 });
 
