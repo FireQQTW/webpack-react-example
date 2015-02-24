@@ -1,11 +1,26 @@
 // app.js
 'use strict';
 
-window.$ = window.jQuery = require('jquery');
+// libary
+require('./ngReqShim')();
+require('angular-route');
 
-var angular = require('angular'),
-    pluginAll = require('./vendor/pluginAll.min.js');
+// default include
+require("bootstrap-webpack");            // include bootstrap
+require("./../stylesheets/styles.scss"); // default css
 
-var go = require('./go'),
-    foo = require('./foo');
+// plugin loader
+require("semantic-ui/dist/semantic.min.css");
+require("semantic-ui/dist/semantic.min.js");
+require("modernizr/Modernizr.js");
+require("imports?require=>global.ngReqShim!ng-dialog");
+    // pluginAll = require('./vendor/pluginAll.min.js');
 
+// other page
+require('./go')();
+require('./foo')();
+require('./one').face();
+
+var callTwoOcc = require('./two');
+
+callTwoOcc.occ();

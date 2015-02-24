@@ -1,3 +1,4 @@
+
 'use strict';
 
 var gulp       = require('gulp'),
@@ -5,7 +6,8 @@ var gulp       = require('gulp'),
     watchify   = require('watchify'),
     browserify = require('browserify'),
     mainBowerFiles = require('main-bower-files'),
-    source      = require('vinyl-source-stream');
+    source      = require('vinyl-source-stream'),
+    webpackConfig = require('./webpack.config.js');
 
 var gulpLoadOptions = {
       'rename': {
@@ -69,7 +71,9 @@ gulp.task('bower-copy:fonts', function() {
 =                          compile language                   =
 ============================================================*/
 
-gulp.task('compile', ['compile:jade', 'compile:scss', 'compile:browserify', 'compile:pluginJS', 'compile:pluginCSS']);
+// gulp.task('compile', ['compile:jade', 'compile:scss', 'compile:browserify', 'compile:pluginJS', 'compile:pluginCSS']);
+gulp.task('compile', ['compile:jade', 'compile:scss', 'compile:webpack', 'compile:pluginJS', 'compile:pluginCSS']);
+
 
 gulp.task('compile:jade', function() {
   console.log("-------------------------------------------------- 編譯jade");
@@ -97,7 +101,17 @@ gulp.task('compile:scss', function(){
   .pipe($.connect.reload());
 });
 
-var bundler = watchify(browserify('./' + SETTINGS.src.js + 'default.js', watchify.args));
+gulp.task('compile:webpack', function(){
+  console.log("-------------------------------------------------- 編譯webpack");
+  gulp.src(SETTINGS.src.js + 'default.js')
+  .pipe($.webpack(webpackConfig))
+  .pipe(gulp.dest(SETTINGS.build.js))
+  .pipe($.connect.reload());
+});
+
+var bundler = watchify(browserify('./' + SETTINGS.src.js + 'default.js', {
+  paths: ['./node_modules', './app/assets/javascript/vendor/']
+}));
 // add any other browserify options or transforms here
 bundler.transform('brfs');
 
@@ -157,7 +171,7 @@ gulp.task('watch', function() {
   // $.livereload.listen();
   gulp.watch(SETTINGS.src.app + '**/*.jade', ['clean:html', 'compile:jade']);
   gulp.watch(SETTINGS.src.css + '**/*.scss', ['clean:css', 'compile:scss', 'compile:pluginCSS']);
-  // gulp.watch([SETTINGS.src.js + '**/*.js', '!' + SETTINGS.src.vendor + '**/*.js'], ['clean:js', 'compile:browserify', 'compile:pluginJS']);
+  // gulp.watch([SETTINGS.src.js + '**/*.js', '!' + SETTINGS.src.vendor + '**/*.js'], ['clean:js', 'compile:webpack', 'compile:pluginJS']);
 });
 
 

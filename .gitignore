@@ -39,3 +39,5 @@ node_modules
 bower_components
 
 dist/**
+app/assets/javascript/vendor/**
+app/assets/lib/**
