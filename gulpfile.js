@@ -1,13 +1,14 @@
 
 'use strict';
 
-var gulp       = require('gulp'),
-    stylish    = require('jshint-stylish'),
-    watchify   = require('watchify'),
-    browserify = require('browserify'),
-    mainBowerFiles = require('main-bower-files'),
-    source      = require('vinyl-source-stream'),
-    webpackConfig = require('./webpack.config.js');
+var gulp             = require('gulp'),
+    stylish          = require('jshint-stylish'),
+    mainBowerFiles   = require('main-bower-files'),
+    source           = require('vinyl-source-stream'),
+    webpack          = require('webpack'),
+    pngquant         = require('imagemin-pngquant'),
+    WebpackDevServer = require("webpack-dev-server"),
+    webpackConfig    = require('./webpack.config');
 
 var gulpLoadOptions = {
       'rename': {
@@ -18,20 +19,24 @@ var gulpLoadOptions = {
 
 var SETTINGS = {
   src: {
-    app:       'app/',
-    layout:    'app/layout/',
-    component: 'app/component/',
-    css:       'app/assets/stylesheets/',
-    js:        'app/assets/javascript/',
-    vendor:    'app/assets/javascript/vendor',
-    lib:       'app/assets/lib/'
+    app:          'app/',
+    publicAssets: 'app/assets/public/',
+    layout:       'app/layout/',
+    component:    'app/component/',
+    css:          'app/assets/stylesheets/',
+    js:           'app/assets/javascript/',
+    images:       'app/assets/images/',
+    vendor:       'app/assets/javascript/vendor',
+    lib:          'app/assets/lib/'
   },
   build: {
-    dist:  'dist/',
-    lib:   'dist/assets/lib/',
-    css:   'dist/assets/css/',
-    js:    'dist/assets/javascript/',
-    fonts: 'dist/assets/fonts/'
+    dist:         'dist/',
+    publicAssets: 'dist/assets/public/',
+    lib:          'dist/assets/lib/',
+    css:          'dist/assets/css/',
+    js:           'dist/assets/javascript/',
+    images:       'dist/assets/images/',
+    fonts:        'dist/assets/fonts/'
   }
 };
 
@@ -66,12 +71,37 @@ gulp.task('bower-copy:fonts', function() {
       .pipe(gulp.dest(SETTINGS.build.fonts));
 });
 
+/*============================================================
+=                          images                   =
+============================================================*/
+
+gulp.task('images:all', ['images:min']);
+
+gulp.task('images:min', function() {
+  console.log("-------------------------------------------------- images min.....");
+  gulp.src(SETTINGS.src.images + '*')
+  .pipe($.imagemin({
+      progressive: true,
+      svgoPlugins: [{removeViewBox: false}],
+      use: [pngquant()]
+  }))
+  .pipe(gulp.dest(SETTINGS.build.images));
+});
+
+/*============================================================
+=                          public assets                   =
+============================================================*/
+
+gulp.task('public:assets', function() {
+  console.log("-------------------------------------------------- copy assets");
+  gulp.src(SETTINGS.src.publicAssets + '*')
+  .pipe(gulp.dest(SETTINGS.build.publicAssets));
+});
 
 /*============================================================
 =                          compile language                   =
 ============================================================*/
 
-// gulp.task('compile', ['compile:jade', 'compile:scss', 'compile:browserify', 'compile:pluginJS', 'compile:pluginCSS']);
 gulp.task('compile', ['compile:jade', 'compile:scss', 'compile:webpack', 'compile:pluginJS', 'compile:pluginCSS']);
 
 
@@ -83,7 +113,7 @@ gulp.task('compile:jade', function() {
     pretty: true
   }))
   .pipe(gulp.dest(SETTINGS.build.dist))
-  .pipe($.connect.reload());
+  .pipe($.livereload());
 });
 
 gulp.task('compile:scss', function(){
@@ -98,39 +128,8 @@ gulp.task('compile:scss', function(){
   }))
   .on('error', function (err) { console.log(err.message); })
   .pipe(gulp.dest(SETTINGS.build.css))
-  .pipe($.connect.reload());
+  .pipe($.livereload());
 });
-
-gulp.task('compile:webpack', function(){
-  console.log("-------------------------------------------------- 編譯webpack");
-  gulp.src(SETTINGS.src.js + 'default.js')
-  .pipe($.webpack(webpackConfig))
-  .pipe(gulp.dest(SETTINGS.build.js))
-  .pipe($.connect.reload());
-});
-
-var bundler = watchify(browserify('./' + SETTINGS.src.js + 'default.js', {
-  paths: ['./node_modules', './app/assets/javascript/vendor/']
-}));
-// add any other browserify options or transforms here
-bundler.transform('brfs');
-
-gulp.task('compile:browserify', ['jshint'], bundle); // so you can run `gulp js` to build the file
-bundler.on('update', bundle); // on any dep update, runs the bundler
-bundler.on('log', function(msg) {
-  console.log(msg);
-});
-
-function bundle() {
-  console.log("-------------------------------------------------- browserify run");
-  return bundler.bundle()
-    // log errors if they happen
-    .on('error', $.util.log.bind($.util, 'Browserify Error'))
-    .pipe(source('all.js'))
-    .pipe(gulp.dest(SETTINGS.build.js))
-    .pipe($.connect.reload());
-}
-
 
 gulp.task('compile:pluginJS', function(){
   console.log("-------------------------------------------------- plugin js");
@@ -152,6 +151,52 @@ gulp.task('compile:pluginCSS', function(){
   .pipe(gulp.dest(SETTINGS.build.css));
 });
 
+
+/*============================================================
+=                          webpack                   =
+============================================================*/
+
+gulp.task('compile:webpack', function(){
+  console.log("-------------------------------------------------- 編譯webpack");
+  webpack(webpackConfig, function (err, stats) {
+    if (err) {
+      throw new $.util.PluginError('webpack-dev-server', err);
+    }
+
+    $.util.log('[webpack-dev-server]', stats.toString({
+      colors: true
+    }));
+  });
+});
+
+gulp.task('webpack-dev-server', function(callback) {
+
+  var server = new WebpackDevServer(webpack(webpackConfig), {
+    publicPath: '/assets/javascript/',
+    contentBase: 'dist',
+
+    // Toggle this to enable _in code_ hot module replacement.
+    // See hot-module.js / css for an example.  If you're looking
+    // to simply update css / js, set to false for a sufficent enough
+    // page refresh.  Otherwise you will need to wrap js requires
+    // in the hot module loader accept callback in `app.js`.
+    hot: true,
+    inline: true,
+    noInfo: false,
+    quiet: false,
+    stats: { colors: true },
+    watchDelay: 200
+  });
+
+  server.listen(8080, "localhost", function() {});
+
+  $.util.log('[webpack-dev-server]',
+    'http://localhost:8080/webpack-dev-server/index.html');
+
+  callback();
+});
+
+
 /*============================================================
 =                          jshint                   =
 ============================================================*/
@@ -168,10 +213,11 @@ gulp.task('jshint', function() {
 ============================================================*/
 
 gulp.task('watch', function() {
-  // $.livereload.listen();
+  $.livereload.listen();
   gulp.watch(SETTINGS.src.app + '**/*.jade', ['clean:html', 'compile:jade']);
+  gulp.watch(SETTINGS.src.images + '**/*', ['images:all']);
+  gulp.watch(SETTINGS.src.publicAssets + '**/*', ['public:assets']);
   gulp.watch(SETTINGS.src.css + '**/*.scss', ['clean:css', 'compile:scss', 'compile:pluginCSS']);
-  // gulp.watch([SETTINGS.src.js + '**/*.js', '!' + SETTINGS.src.vendor + '**/*.js'], ['clean:js', 'compile:webpack', 'compile:pluginJS']);
 });
 
 
@@ -210,7 +256,7 @@ gulp.task('clean:js', function(cb) {
 gulp.task('connectDist', function () {
   $.connect.server({
     root: 'dist',
-    port: 8001,
+    port: 8080,
     livereload: true
   });
 });
@@ -219,7 +265,11 @@ gulp.task('connectDist', function () {
 =                          build                   =
 ============================================================*/
 
-gulp.task('build', ['connectDist', 'bower-copy', 'compile', 'watch'], function() {
+gulp.task('prod', ['webpack-dev-server', 'bower-copy', 'compile', 'images:all', 'public:assets', 'watch'], function() {
+  console.log('-------------------------------------------------- BUILD - Production Mode');
+});
+
+gulp.task('build', ['webpack-dev-server', 'bower-copy', 'compile', 'images:all', 'public:assets', 'watch'], function() {
   console.log('-------------------------------------------------- BUILD - Development Mode');
 });
 

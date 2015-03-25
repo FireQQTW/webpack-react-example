@@ -1,13 +1,13 @@
 'use strict';
 
 var path = require('path'),
-    webpack = require("webpack"),
-    AngularPlugin = require('angular-webpack-plugin');
+    webpack = require("webpack");
 
 module.exports = {
   devtool: '#inline-source-map',
   resolve: {
-        root: [path.join(__dirname, "bower_components")]
+        root: [path.join(__dirname, "bower_components")],
+        extensions: ['', '.js', '.jsx']
   },
   plugins: [
       new webpack.ResolverPlugin(
@@ -19,10 +19,9 @@ module.exports = {
           jQuery: "jquery",
           "windows.jQuery": "jquery",
           _: "underscore",
-          ngRoute: 'angular-route',
-          // angular: 'imports?this=>window!angular',
       }),
-      new AngularPlugin()
+      new webpack.HotModuleReplacementPlugin(),
+      new webpack.NoErrorsPlugin()
   ],
   module: {
     loaders: [
@@ -36,16 +35,22 @@ module.exports = {
       { test: /\.woff2?$/, loader: 'url?mimetype=application/font-woff' },
       { test: /\.eot$/, loader: 'url?mimetype=application/font-woff' },
       { test: /\.ttf$/, loader: 'url?mimetype=application/font-woff' },
-      { test: /\.jsx/, loader: 'jsx?harmony' },
+      { test: /\.jsx?$/, loaders: ['react-hot', 'jsx?harmony'], exclude: /node_modules/ },
       { test: /\Modernizr.js$/, loader: 'imports?this=>global' },
     ]
   },
   entry: {
         all: "./app/assets/javascript/default",
+        react: [
+          'webpack-dev-server/client?http://localhost:8080',
+          'webpack/hot/only-dev-server',
+          "./app/assets/javascript/react/reactApp"
+        ]
   },
   output: {
-    path: __dirname + '/dist/assets/javascript',
+    path: __dirname + '/dist/assets/javascript/',
     filename: "[name].bundle.js",
+    publicPath: '/assets/javascript/',
     chunkFilename: "[id].bundle.js"
   },
   debug: true,
