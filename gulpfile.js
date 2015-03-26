@@ -8,7 +8,9 @@ var gulp             = require('gulp'),
     webpack          = require('webpack'),
     pngquant         = require('imagemin-pngquant'),
     WebpackDevServer = require("webpack-dev-server"),
-    webpackConfig    = require('./webpack.config');
+    webpackConfig    = require('./webpack.config'),
+    webpackDevConfig = require('./webpack-dev.config'),
+    webpackProdConfig = require('./webpack-prod.config');
 
 var gulpLoadOptions = {
       'rename': {
@@ -159,17 +161,13 @@ gulp.task('compile:pluginCSS', function(){
 
 gulp.task('compile:webpack:prod', function(){
   console.log("-------------------------------------------------- 編譯webpack:prod");
-  webpackConfig.plugins = webpackConfig.plugins.concat(
-    new webpack.optimize.DedupePlugin(),
-    new webpack.optimize.UglifyJsPlugin()
-  );
-  
-  webpack(webpackConfig, function (err, stats) {
+
+  webpack(webpackProdConfig, function (err, stats) {
     if (err) {
-      throw new $.util.PluginError('webpack-dev-server', err);
+      throw new $.util.PluginError('compile:webpack:prod', err);
     }
 
-    $.util.log('[webpack-dev-server]', stats.toString({
+    $.util.log('[compile:webpack:prod]', stats.toString({
       colors: true
     }));
   });
@@ -177,12 +175,8 @@ gulp.task('compile:webpack:prod', function(){
 
 gulp.task('compile:webpack', function(){
   console.log("-------------------------------------------------- 編譯webpack");
-  webpackConfig.plugins = webpackConfig.plugins.concat(
-      new webpack.HotModuleReplacementPlugin(),
-      new webpack.NoErrorsPlugin()
-  );
 
-  webpack(webpackConfig, function (err, stats) {
+  webpack(webpackDevConfig, function (err, stats) {
     if (err) {
       throw new $.util.PluginError('webpack-dev-server', err);
     }
@@ -195,7 +189,7 @@ gulp.task('compile:webpack', function(){
 
 gulp.task('webpack-dev-server', function(callback) {
 
-  var server = new WebpackDevServer(webpack(webpackConfig), {
+  var server = new WebpackDevServer(webpack(webpackDevConfig), {
     publicPath: '/assets/javascript/',
     contentBase: 'dist',
 
@@ -290,7 +284,7 @@ gulp.task('connectDist', function () {
 =                          build                   =
 ============================================================*/
 
-gulp.task('build:prod', ['webpack-dev-server', 'bower-copy', 'compile:prod', 'images:all', 'public:assets', 'watch'], function() {
+gulp.task('build:prod', ['connectDist', 'bower-copy', 'compile:prod', 'images:all', 'public:assets', 'watch'], function() {
   console.log('-------------------------------------------------- BUILD - Production Mode');
 });
 
