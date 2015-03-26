@@ -103,6 +103,7 @@ gulp.task('public:assets', function() {
 ============================================================*/
 
 gulp.task('compile', ['compile:jade', 'compile:scss', 'compile:webpack', 'compile:pluginJS', 'compile:pluginCSS']);
+gulp.task('compile:prod', ['compile:jade', 'compile:scss', 'compile:webpack:prod', 'compile:pluginJS', 'compile:pluginCSS']);
 
 
 gulp.task('compile:jade', function() {
@@ -156,8 +157,31 @@ gulp.task('compile:pluginCSS', function(){
 =                          webpack                   =
 ============================================================*/
 
+gulp.task('compile:webpack:prod', function(){
+  console.log("-------------------------------------------------- 編譯webpack:prod");
+  webpackConfig.plugins = webpackConfig.plugins.concat(
+    new webpack.optimize.DedupePlugin(),
+    new webpack.optimize.UglifyJsPlugin()
+  );
+  
+  webpack(webpackConfig, function (err, stats) {
+    if (err) {
+      throw new $.util.PluginError('webpack-dev-server', err);
+    }
+
+    $.util.log('[webpack-dev-server]', stats.toString({
+      colors: true
+    }));
+  });
+});
+
 gulp.task('compile:webpack', function(){
   console.log("-------------------------------------------------- 編譯webpack");
+  webpackConfig.plugins = webpackConfig.plugins.concat(
+      new webpack.HotModuleReplacementPlugin(),
+      new webpack.NoErrorsPlugin()
+  );
+
   webpack(webpackConfig, function (err, stats) {
     if (err) {
       throw new $.util.PluginError('webpack-dev-server', err);
@@ -182,8 +206,9 @@ gulp.task('webpack-dev-server', function(callback) {
     // in the hot module loader accept callback in `app.js`.
     hot: true,
     inline: true,
-    noInfo: false,
-    quiet: false,
+    noInfo: true,
+    quiet: true,
+    lazy: false,
     stats: { colors: true },
     watchDelay: 200
   });
@@ -265,7 +290,7 @@ gulp.task('connectDist', function () {
 =                          build                   =
 ============================================================*/
 
-gulp.task('prod', ['webpack-dev-server', 'bower-copy', 'compile', 'images:all', 'public:assets', 'watch'], function() {
+gulp.task('build:prod', ['webpack-dev-server', 'bower-copy', 'compile:prod', 'images:all', 'public:assets', 'watch'], function() {
   console.log('-------------------------------------------------- BUILD - Production Mode');
 });
 

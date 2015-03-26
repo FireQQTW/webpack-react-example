@@ -2,7 +2,6 @@
 
 'use strict'
 
-var React = require('react');
 var CommentBox = require('./CommentBox');
 
 module.exports = function() {

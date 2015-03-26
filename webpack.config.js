@@ -4,7 +4,7 @@ var path = require('path'),
     webpack = require("webpack");
 
 module.exports = {
-  devtool: '#inline-source-map',
+  devtool: '#source-map',
   resolve: {
         root: [path.join(__dirname, "bower_components")],
         extensions: ['', '.js', '.jsx']
@@ -15,10 +15,11 @@ module.exports = {
         ["normal", "loader"]
       ),
       new webpack.ProvidePlugin({
-          $: "jquery",
-          jQuery: "jquery",
-          "windows.jQuery": "jquery",
+          $: "jquery/dist/jquery.min",
+          jQuery: "jquery/dist/jquery.min",
+          "windows.jQuery": "jquery/dist/jquery.min",
           _: "underscore",
+          React: 'react'
       }),
       new webpack.HotModuleReplacementPlugin(),
       new webpack.NoErrorsPlugin()
@@ -40,11 +41,10 @@ module.exports = {
     ]
   },
   entry: {
-        all: "./app/assets/javascript/default",
-        react: [
+        all: [
+          "./app/assets/javascript/default",
           'webpack-dev-server/client?http://localhost:8080',
           'webpack/hot/only-dev-server',
-          "./app/assets/javascript/react/reactApp"
         ]
   },
   output: {

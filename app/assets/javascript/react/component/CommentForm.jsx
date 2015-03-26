@@ -1,7 +1,5 @@
 /** @jsx React.DOM */
 
-var React = require('react');
-
 var CommentForm = React.createClass({
   handleSubmit: function() {
     var author = this.refs.author.getDOMNode().value.trim();

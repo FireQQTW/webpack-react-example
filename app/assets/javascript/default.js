@@ -13,4 +13,5 @@ require("semantic-ui/dist/semantic.min.css");
 require("semantic-ui/dist/semantic.min.js");
 require("modernizr/Modernizr.js");
 
-// other page
+// include react
+require('./react/reactApp');

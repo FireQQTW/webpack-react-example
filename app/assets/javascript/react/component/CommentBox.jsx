@@ -1,6 +1,5 @@
 /** @jsx React.DOM */
 
-var React = require('react');
 var CommentList = require('./CommentList');
 var CommentForm = require('./CommentForm');
 

@@ -1,6 +1,5 @@
 /** @jsx React.DOM */
 
-var React = require('react');
 var Comment = require('./Comment');
 
 var CommentList = React.createClass({
